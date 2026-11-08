@@ -1,0 +1,1460 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>小型學校月段考成績與學習進步追蹤系統</title>
+  <!-- Tailwind CSS CDN -->
+  <script src="https://cdn.tailwindcss.com/3.4.17"></script>
+  <!-- Chart.js CDN -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            brand: {
+              50: '#eff6ff',
+              100: '#dbeafe',
+              500: '#3b82f6',
+              600: '#2563eb',
+              700: '#1d4ed8',
+              800: '#1e40af',
+              900: '#1e3a8a',
+            }
+          }
+        }
+      }
+    }
+  </script>
+  <link rel="stylesheet" href="css/styles.css">
+</head>
+<body class="bg-slate-50 text-slate-800 min-h-screen flex flex-col antialiased">
+
+  <!-- Top Announcement / Status Bar (No-Print) -->
+  <header class="bg-brand-900 text-white shadow-md sticky top-0 z-40 no-print">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+      <div class="flex items-center justify-between h-16">
+        <!-- Brand & School Info -->
+        <div class="flex items-center space-x-3">
+          <div class="w-10 h-10 rounded-lg bg-white/10 flex items-center justify-center border border-white/20 shadow-inner">
+            <svg class="w-6 h-6 text-amber-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" />
+            </svg>
+          </div>
+          <div>
+            <div class="flex items-center space-x-2">
+              <span id="displaySchoolName" class="font-bold text-lg tracking-wide text-white">市立希望國民中學</span>
+              <span class="text-xs bg-emerald-600/90 text-white px-2 py-0.5 rounded-full font-medium">小校精緻評量模式</span>
+              <span class="text-xs bg-brand-700 text-brand-100 px-2 py-0.5 rounded font-mono" id="displayClassNameTag">七年甲班</span>
+            </div>
+            <div class="text-xs text-brand-200 flex items-center space-x-2">
+              <span id="displayExamMeta">115學年度 第1學期 • 一段與二段成長追蹤</span>
+              <span class="text-brand-400">•</span>
+              <span id="autoSaveIndicator" class="flex items-center text-emerald-300 font-medium text-[11px]">
+                <svg class="w-3 h-3 mr-1" fill="currentColor" viewBox="0 0 20 20">
+                  <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd" />
+                </svg>
+                本機資料庫即時同步
+              </span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Right Quick Actions -->
+        <div class="flex items-center space-x-2">
+          <!-- Manual Save Button -->
+          <button id="btnManualSave" class="flex items-center space-x-1.5 px-3 py-1.5 text-xs font-medium rounded-lg bg-brand-800 hover:bg-brand-700 text-white border border-brand-600 transition shadow-sm active:scale-95">
+            <svg class="w-4 h-4 text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-3m-1 4l-3 3m0 0l-3-3m3 3V4" />
+            </svg>
+            <span>儲存備份</span>
+          </button>
+
+          <!-- Download Source HTML Button -->
+          <button id="btnDownloadSourceHtml" class="flex items-center space-x-1.5 px-3 py-1.5 text-xs font-medium rounded-lg bg-indigo-700 hover:bg-indigo-600 text-white border border-indigo-500 transition shadow-sm active:scale-95" title="下載完整單一網頁原始碼 (.html)">
+            <svg class="w-4 h-4 text-indigo-200" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 20l4-16m4 4l4 4-4 4M6 16l-4-4 4-4" />
+            </svg>
+            <span class="hidden sm:inline">下載原始碼</span>
+          </button>
+
+          <!-- Quick Print Button -->
+          <button id="btnTopPrint" class="flex items-center space-x-1.5 px-3.5 py-1.5 text-xs font-medium rounded-lg bg-amber-500 hover:bg-amber-400 text-slate-900 font-semibold transition shadow-sm active:scale-95">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" />
+            </svg>
+            <span>列印分析表</span>
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Navigation Tabs -->
+    <div class="bg-brand-800/80 backdrop-blur border-t border-brand-700/60">
+      <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <nav class="flex space-x-1 sm:space-x-3 overflow-x-auto py-2">
+          <!-- Tab 1: 成績輸入 -->
+          <button data-tab="entry" class="tab-btn px-3 py-2 rounded-lg text-xs sm:text-sm font-medium flex items-center space-x-2 bg-brand-600 text-white shadow-sm transition">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+            </svg>
+            <span>段考成績登打</span>
+          </button>
+
+          <!-- Tab 2: 兩次段考對比與進步排行 -->
+          <button data-tab="compare" class="tab-btn px-3 py-2 rounded-lg text-xs sm:text-sm font-medium flex items-center space-x-2 text-brand-100 hover:bg-brand-700/60 transition">
+            <svg class="w-4 h-4 text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" />
+            </svg>
+            <span>兩次段考對比與進步排行</span>
+            <span class="bg-emerald-400 text-slate-900 text-[10px] font-bold px-1.5 py-0.2 rounded-full">雙試對照</span>
+          </button>
+
+          <!-- Tab 2.5: 一般生段考需補考名單與成績登錄 (NEW) -->
+          <button data-tab="makeup" class="tab-btn px-3 py-2 rounded-lg text-xs sm:text-sm font-medium flex items-center space-x-2 text-brand-100 hover:bg-brand-700/60 transition">
+            <svg class="w-4 h-4 text-rose-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4" />
+            </svg>
+            <span>段考需補考名冊</span>
+            <span id="navMakeupCountBadge" class="bg-rose-500 text-white text-[10px] font-bold px-1.5 py-0.2 rounded-full">0人</span>
+          </button>
+
+          <!-- Tab 3: 特殊需求與特教關懷 -->
+          <button data-tab="special" class="tab-btn px-3 py-2 rounded-lg text-xs sm:text-sm font-medium flex items-center space-x-2 text-brand-100 hover:bg-brand-700/60 transition">
+            <span class="flex h-2 w-2 relative">
+              <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-amber-400 opacity-75"></span>
+              <span class="relative inline-flex rounded-full h-2 w-2 bg-amber-400"></span>
+            </span>
+            <svg class="w-4 h-4 text-amber-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" />
+            </svg>
+            <span>特殊需求與特教專區</span>
+            <span id="navSpecialCountBadge" class="bg-amber-400 text-slate-900 text-[10px] font-bold px-1.5 py-0.2 rounded-full">0</span>
+          </button>
+
+          <!-- Tab 4: 學習品質分析圖表 -->
+          <button data-tab="stats" class="tab-btn px-3 py-2 rounded-lg text-xs sm:text-sm font-medium flex items-center space-x-2 text-brand-100 hover:bg-brand-700/60 transition">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+            </svg>
+            <span>班級學習品質統計</span>
+          </button>
+
+          <!-- Tab 5: 列印專區 -->
+          <button data-tab="print" class="tab-btn px-3 py-2 rounded-lg text-xs sm:text-sm font-medium flex items-center space-x-2 text-brand-100 hover:bg-brand-700/60 transition">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" />
+            </svg>
+            <span>列印與核章專區</span>
+          </button>
+
+          <!-- Tab 6: 系統設定 -->
+          <button data-tab="settings" class="tab-btn px-3 py-2 rounded-lg text-xs sm:text-sm font-medium flex items-center space-x-2 text-brand-100 hover:bg-brand-700/60 transition">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+            </svg>
+            <span>系統與資料管理</span>
+          </button>
+        </nav>
+      </div>
+    </div>
+  </header>
+
+  <!-- Main Container -->
+  <main class="flex-1 max-w-7xl w-full mx-auto p-4 sm:p-6 lg:p-8 no-print">
+
+    <!-- ========================================== -->
+    <!-- TAB 1: 段考成績登打 (Grade Entry Grid) -->
+    <!-- ========================================== -->
+    <section id="tab-entry" class="space-y-6">
+      
+      <!-- Top Overview & Exam Stage Switcher Card -->
+      <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-4 sm:p-5">
+        <div class="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
+          
+          <!-- Exam Selection Tabs (Exam 1 vs Exam 2) -->
+          <div class="flex items-center space-x-2">
+            <span class="text-xs font-semibold text-slate-500 uppercase tracking-wider whitespace-nowrap">目前登打階段：</span>
+            <div class="inline-flex p-1 bg-slate-100 rounded-xl border border-slate-200">
+              <button id="btnSwitchExam1" class="px-4 py-1.5 rounded-lg text-xs font-bold transition flex items-center space-x-1.5 bg-brand-600 text-white shadow-sm">
+                <span class="w-2 h-2 rounded-full bg-white"></span>
+                <span>第一次段考 (基礎成績)</span>
+              </button>
+              <button id="btnSwitchExam2" class="px-4 py-1.5 rounded-lg text-xs font-bold transition flex items-center space-x-1.5 text-slate-700 hover:text-slate-900">
+                <span class="w-2 h-2 rounded-full bg-emerald-500"></span>
+                <span>第二次段考 (對比評量)</span>
+              </button>
+            </div>
+          </div>
+
+          <!-- Class Summary Quick Badges -->
+          <div class="flex flex-wrap items-center gap-2 sm:gap-3 text-xs">
+            <div class="bg-slate-100 rounded-lg px-3 py-1.5 border border-slate-200 text-slate-700">
+              全班人數：<span id="badgeClassCount" class="font-bold text-slate-900">15</span> 人
+            </div>
+            <div class="bg-amber-50 rounded-lg px-3 py-1.5 border border-amber-200 text-amber-800 flex items-center space-x-1">
+              <span>特殊需求：</span>
+              <span id="badgeClassSpecialCount" class="font-bold text-amber-900">4</span>
+              <span class="text-[11px] text-amber-700">(資源/特教/扶助)</span>
+            </div>
+            <div class="bg-blue-50 rounded-lg px-3 py-1.5 border border-blue-200 text-blue-800">
+              <span id="badgeExamTitle">第一次段考</span> 班平均：<span id="badgeClassAvg" class="font-bold text-blue-900">0.0</span> 分
+            </div>
+            <div class="bg-emerald-50 rounded-lg px-3 py-1.5 border border-emerald-200 text-emerald-800">
+              及格率：<span id="badgeClassPassRate" class="font-bold text-emerald-900">0%</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Filter & Search Toolbar -->
+        <div class="mt-4 pt-4 border-t border-slate-100 flex flex-col lg:flex-row lg:items-center justify-between gap-3">
+          <!-- Filter Buttons -->
+          <div class="flex flex-wrap items-center gap-1.5">
+            <span class="text-xs font-medium text-slate-500 mr-1">過濾檢視：</span>
+            <button data-filter="all" class="filter-btn px-2.5 py-1 rounded-md text-xs font-medium bg-slate-800 text-white transition">
+              全部學生 (<span id="countFilterAll">0</span>)
+            </button>
+            <button data-filter="special" class="filter-btn px-2.5 py-1 rounded-md text-xs font-medium bg-slate-100 text-slate-700 hover:bg-slate-200 transition flex items-center space-x-1">
+              <span class="w-2 h-2 rounded-full bg-amber-500"></span>
+              <span>所有特殊生 (<span id="countFilterSpecial">0</span>)</span>
+            </button>
+            <button data-filter="resource" class="filter-btn px-2.5 py-1 rounded-md text-xs font-medium bg-slate-100 text-slate-700 hover:bg-slate-200 transition">
+              資源班
+            </button>
+            <button data-filter="support" class="filter-btn px-2.5 py-1 rounded-md text-xs font-medium bg-slate-100 text-slate-700 hover:bg-slate-200 transition">
+              學習扶助
+            </button>
+            <button data-filter="fail" class="filter-btn px-2.5 py-1 rounded-md text-xs font-medium bg-slate-100 text-rose-700 hover:bg-rose-50 transition">
+              含不及格科目 ⚠️
+            </button>
+          </div>
+
+          <!-- Search & Add Student Buttons -->
+          <div class="flex items-center space-x-2">
+            <div class="relative">
+              <input type="text" id="searchStudentInput" placeholder="搜尋姓名 / 座號 / 學號..." class="pl-8 pr-3 py-1.5 text-xs rounded-lg border border-slate-300 focus:outline-none focus:ring-2 focus:ring-brand-500 w-44 sm:w-56">
+              <svg class="w-4 h-4 text-slate-400 absolute left-2.5 top-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+              </svg>
+            </div>
+
+            <button id="btnOpenAddStudentModal" class="px-3 py-1.5 text-xs font-medium rounded-lg bg-brand-600 hover:bg-brand-700 text-white shadow-sm flex items-center space-x-1 transition">
+              <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M18 9v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 018 0zM3 20a6 6 0 0112 0v1H3v-1z" />
+              </svg>
+              <span>新增學生</span>
+            </button>
+
+            <!-- Quick Keyboard Tips -->
+            <button id="btnKeyboardTip" title="按鍵提示" class="p-1.5 text-slate-400 hover:text-slate-600 rounded-lg hover:bg-slate-100">
+              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Main Grade Table Card -->
+      <div class="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
+        <!-- Table Header Bar -->
+        <div class="px-5 py-3.5 bg-slate-50 border-b border-slate-200 flex flex-wrap items-center justify-between gap-2">
+          <div class="flex items-center space-x-3">
+            <h2 id="currentClassTitle" class="text-base font-bold text-slate-900 flex items-center space-x-2">
+              <span id="headingClassName">七年甲班</span>
+              <span id="headingExamBadge" class="text-xs font-semibold px-2.5 py-0.5 rounded-full bg-brand-100 text-brand-800 border border-brand-200">第一次段考成績登打</span>
+              <span class="text-xs font-normal text-slate-500 bg-white px-2 py-0.5 rounded border border-slate-200" id="headingTeacherName">導師：許文華 老師</span>
+            </h2>
+            <span class="text-xs text-slate-400">|</span>
+            <span class="text-xs text-slate-500">鍵盤快速輸入：按 <kbd class="px-1.5 py-0.5 bg-slate-200 rounded text-slate-700 font-mono text-[11px]">Enter</kbd> 或 <kbd class="px-1.5 py-0.5 bg-slate-200 rounded text-slate-700 font-mono text-[11px]">↓</kbd> 跳下一位學生同科目</span>
+          </div>
+
+          <div class="flex flex-wrap items-center gap-2 text-xs">
+            <button id="btnBatchAIGenerateExamNotes" class="px-3 py-1.5 rounded-lg bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-500 hover:to-purple-500 text-white font-bold shadow-sm flex items-center space-x-1.5 transition active:scale-95">
+              <span>✨ 一鍵 AI 生成全班本次段考評語</span>
+            </button>
+            <span class="text-slate-300 hidden sm:inline">|</span>
+            <span class="inline-flex items-center px-1.5 py-0.5 rounded text-[11px] font-medium bg-red-50 text-red-700 border border-red-200">&lt;60 不及格</span>
+            <span class="inline-flex items-center px-1.5 py-0.5 rounded text-[11px] font-medium bg-emerald-50 text-emerald-700 border border-emerald-200">≥90 優異</span>
+          </div>
+        </div>
+
+        <!-- Grade Entry Table -->
+        <div class="overflow-x-auto max-h-[640px] relative">
+          <table class="w-full text-left border-collapse text-xs sm:text-sm">
+            <thead class="bg-slate-100 text-slate-700 sticky top-0 z-20 shadow-sm">
+              <tr>
+                <th class="py-3 px-3 font-semibold text-center w-12 border-b border-r border-slate-200 bg-slate-100">座號</th>
+                <th class="py-3 px-3 font-semibold w-24 border-b border-r border-slate-200 bg-slate-100">姓名</th>
+                <th class="py-3 px-3 font-semibold w-36 border-b border-r border-slate-200 bg-slate-100 text-center">
+                  特殊生標示 / 身分
+                </th>
+                <th class="py-3 px-3 font-semibold w-40 border-b border-r border-slate-200 bg-slate-100 text-center">
+                  評量調整 / 備註
+                </th>
+                <!-- Dynamic Subject Headers -->
+                <th class="py-3 px-2 font-semibold text-center w-20 border-b border-r border-slate-200 bg-slate-100">國文</th>
+                <th class="py-3 px-2 font-semibold text-center w-20 border-b border-r border-slate-200 bg-slate-100">英語</th>
+                <th class="py-3 px-2 font-semibold text-center w-20 border-b border-r border-slate-200 bg-slate-100">數學</th>
+                <th class="py-3 px-2 font-semibold text-center w-20 border-b border-r border-slate-200 bg-slate-100">自然</th>
+                <th class="py-3 px-2 font-semibold text-center w-20 border-b border-r border-slate-200 bg-slate-100">社會</th>
+                <!-- Summary Headers -->
+                <th class="py-3 px-2 font-semibold text-center w-14 border-b border-r border-slate-200 bg-slate-200/60">總分</th>
+                <th class="py-3 px-2 font-semibold text-center w-14 border-b border-r border-slate-200 bg-slate-200/60">平均</th>
+                <th class="py-3 px-2 font-semibold text-center w-16 border-b border-r border-slate-200 bg-slate-200/60">排名</th>
+                <th id="thExamCommentHeader" class="py-3 px-3 font-semibold w-48 border-b border-r border-slate-200 bg-amber-50/70 text-amber-900">本次段考導師評語</th>
+                <th class="py-3 px-2 font-semibold text-center w-20 border-b border-slate-200 bg-slate-100">操作</th>
+              </tr>
+            </thead>
+            <tbody id="gradeTableBody" class="divide-y divide-slate-200">
+              <!-- Dynamically populated student rows -->
+            </tbody>
+            <!-- Subject Column Summary Footer -->
+            <tfoot class="bg-slate-100/90 font-semibold text-slate-800 text-xs border-t-2 border-slate-300 sticky bottom-0 z-20">
+              <tr>
+                <td colspan="4" class="py-2.5 px-3 text-right pr-4 bg-slate-100 border-r border-slate-200">
+                  <span class="text-slate-600">全班各科平均：</span>
+                </td>
+                <td id="avgColChi" class="py-2.5 px-2 text-center text-brand-800 border-r border-slate-200">0.0</td>
+                <td id="avgColEng" class="py-2.5 px-2 text-center text-brand-800 border-r border-slate-200">0.0</td>
+                <td id="avgColMath" class="py-2.5 px-2 text-center text-brand-800 border-r border-slate-200">0.0</td>
+                <td id="avgColSci" class="py-2.5 px-2 text-center text-brand-800 border-r border-slate-200">0.0</td>
+                <td id="avgColSoc" class="py-2.5 px-2 text-center text-brand-800 border-r border-slate-200">0.0</td>
+                <td id="totalColAvg" class="py-2.5 px-2 text-center text-brand-900 border-r border-slate-200 bg-slate-200/70">0.0</td>
+                <td id="overallColAvg" class="py-2.5 px-2 text-center text-brand-900 border-r border-slate-200 bg-slate-200/70">0.0</td>
+                <td colspan="3" class="py-2.5 px-2 text-center text-slate-500 bg-slate-100">
+                  —
+                </td>
+              </tr>
+            </tfoot>
+          </table>
+        </div>
+
+        <!-- Table Footer / Tips Bar -->
+        <div class="p-3 bg-slate-50 border-t border-slate-200 flex flex-col sm:flex-row items-center justify-between text-xs text-slate-500 gap-2">
+          <div class="flex items-center space-x-2">
+            <span class="inline-block w-2 h-2 rounded-full bg-emerald-500"></span>
+            <span>成績修改即時自動存檔至本機資料庫；切換上方按鈕可隨時登打第二次段考成績</span>
+          </div>
+          <div class="flex items-center space-x-4">
+            <span>點擊特殊生身分徽章可快速編輯特教調整措施與「免計常態排名」</span>
+          </div>
+        </div>
+      </div>
+
+    </section>
+
+
+    <!-- ======================================================== -->
+    <!-- TAB 2: 兩次段考對比與進步排行 (CORE COMPARISON SUITE) -->
+    <!-- ======================================================== -->
+    <section id="tab-compare" class="space-y-6 hidden">
+      
+      <!-- Comparison Overview Banner -->
+      <div class="bg-gradient-to-r from-slate-900 via-brand-900 to-indigo-900 rounded-2xl text-white p-6 shadow-md relative overflow-hidden">
+        <div class="relative z-10 max-w-4xl">
+          <div class="inline-flex items-center space-x-2 bg-emerald-500/20 border border-emerald-400/30 px-3 py-1 rounded-full text-xs font-semibold text-emerald-300 mb-3">
+            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+            </svg>
+            <span>小型學校精緻教學品質監控 • 兩次段考學習成長診斷</span>
+          </div>
+          <h2 class="text-2xl font-bold tracking-tight text-white mb-2">第二次段考 vs 第一次段考 學習品質與成長排行</h2>
+          <p class="text-xs sm:text-sm text-slate-300 leading-relaxed">
+            針對全班學生兩次定期評量，自動比對各科成績消長、計算進步率、個人總分平均升降及班排名異動。全面檢視學生個別學習成效，並提供進步獎候選名單與學習扶助弱底診斷。
+          </p>
+        </div>
+      </div>
+
+      <!-- Class Learning Quality Diagnostic Metric Cards -->
+      <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+        
+        <!-- Metric 1: Class Average Shift -->
+        <div class="bg-white p-5 rounded-xl border border-slate-200 shadow-sm flex items-center justify-between">
+          <div>
+            <div class="text-xs font-medium text-slate-500">班級總平均消長</div>
+            <div class="flex items-baseline space-x-2 mt-1">
+              <span id="compareClassAvg2" class="text-2xl font-bold text-slate-900">0.0</span>
+              <span class="text-xs text-slate-400 font-mono">/ 一段 <span id="compareClassAvg1">0.0</span></span>
+            </div>
+            <div id="compareClassAvgDiffBadge" class="text-xs font-bold mt-1 text-emerald-600 flex items-center">
+              +0.0 分 (成長 0%)
+            </div>
+          </div>
+          <div class="w-12 h-12 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center border border-blue-100">
+            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" />
+            </svg>
+          </div>
+        </div>
+
+        <!-- Metric 2: Progress Count -->
+        <div class="bg-white p-5 rounded-xl border border-slate-200 shadow-sm flex items-center justify-between">
+          <div>
+            <div class="text-xs font-medium text-slate-500">全班進步人數比率</div>
+            <div class="flex items-baseline space-x-2 mt-1">
+              <span id="compareProgressCount" class="text-2xl font-bold text-emerald-600">0</span>
+              <span class="text-xs text-slate-400 font-mono">/ 全班 <span id="compareTotalCount">15</span> 人</span>
+            </div>
+            <div class="text-xs text-slate-500 mt-1">
+              進步率 <span id="compareProgressPercent" class="font-bold text-emerald-600">0%</span> (持平/退步: <span id="compareDropCount">0</span>人)
+            </div>
+          </div>
+          <div class="w-12 h-12 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center border border-emerald-100">
+            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 10h4.764a2 2 0 011.789 2.894l-3.5 7A2 2 0 0115.263 21h-4.017c-.163 0-.326-.02-.485-.06L7 20m7-10V5a2 2 0 00-2-2h-.095c-.5 0-.905.405-.905.905 0 .714-.211 1.412-.608 2.006L7 11v9m7-10h-2M7 20H5a2 2 0 01-2-2v-6a2 2 0 012-2h2.5" />
+            </svg>
+          </div>
+        </div>
+
+        <!-- Metric 3: Passing Rate Shift -->
+        <div class="bg-white p-5 rounded-xl border border-slate-200 shadow-sm flex items-center justify-between">
+          <div>
+            <div class="text-xs font-medium text-slate-500">及格人次消長</div>
+            <div class="flex items-baseline space-x-2 mt-1">
+              <span id="comparePassRate2" class="text-2xl font-bold text-slate-900">0%</span>
+              <span class="text-xs text-slate-400 font-mono">/ 一段 <span id="comparePassRate1">0%</span></span>
+            </div>
+            <div id="comparePassRateDiffBadge" class="text-xs font-bold mt-1 text-slate-600">
+              差值: 0%
+            </div>
+          </div>
+          <div class="w-12 h-12 rounded-xl bg-purple-50 text-purple-600 flex items-center justify-center border border-purple-100">
+            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
+            </svg>
+          </div>
+        </div>
+
+        <!-- Metric 4: Special Education Progress -->
+        <div class="bg-white p-5 rounded-xl border border-slate-200 shadow-sm flex items-center justify-between">
+          <div>
+            <div class="text-xs font-medium text-slate-500">特殊生學習扶助成長</div>
+            <div class="flex items-baseline space-x-2 mt-1">
+              <span id="compareSpecialProgressCount" class="text-2xl font-bold text-amber-600">0</span>
+              <span class="text-xs text-slate-400 font-mono">/ 特教生 <span id="compareSpecialTotalCount">4</span> 人</span>
+            </div>
+            <div class="text-xs text-amber-700 mt-1">
+              展現個別化正向增長
+            </div>
+          </div>
+          <div class="w-12 h-12 rounded-xl bg-amber-50 text-amber-600 flex items-center justify-center border border-amber-100">
+            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11.049 2.927c.3-.921 1.603-.921 1.902 0l1.519 4.674a1 1 0 00.95.69h4.915c.969 0 1.371 1.24.588 1.81l-3.976 2.888a1 1 0 00-.363 1.118l1.518 4.674c.3.922-.755 1.688-1.538 1.118l-3.976-2.888a1 1 0 00-1.176 0l-3.976 2.888c-.783.57-1.838-.197-1.538-1.118l1.518-4.674a1 1 0 00-.363-1.118l-3.976-2.888c-.784-.57-.38-1.81.588-1.81h4.914a1 1 0 00.951-.69l1.519-4.674z" />
+            </svg>
+          </div>
+        </div>
+
+      </div>
+
+      <!-- Navigation for Comparison Sub-views -->
+      <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-4">
+        <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+          <!-- Sub-tab switchers -->
+          <div class="flex flex-wrap items-center gap-2">
+            <button id="btnSubCompareFull" class="sub-compare-btn px-3 py-1.5 rounded-lg text-xs font-bold bg-slate-900 text-white transition">
+              學生兩次段考總表與名次消長
+            </button>
+            <button id="btnSubCompareProgressRank" class="sub-compare-btn px-3 py-1.5 rounded-lg text-xs font-bold bg-slate-100 text-slate-700 hover:bg-slate-200 transition">
+              🏆 全科總平均進步率排行 (進步獎)
+            </button>
+            <button id="btnSubCompareSubjectRank" class="sub-compare-btn px-3 py-1.5 rounded-lg text-xs font-bold bg-slate-100 text-slate-700 hover:bg-slate-200 transition">
+              📚 各學科進步率排行榜
+            </button>
+          </div>
+
+          <!-- Subject selector for subject progress view -->
+          <div id="subjectProgressSelectorWrapper" class="hidden flex items-center space-x-2">
+            <label for="selectCompareSubject" class="text-xs font-semibold text-slate-600">檢視學科：</label>
+            <select id="selectCompareSubject" class="text-xs border border-slate-300 rounded-lg px-3 py-1.5 focus:outline-none focus:ring-2 focus:ring-brand-500 bg-white font-medium">
+              <option value="chi">國文科</option>
+              <option value="eng">英語科</option>
+              <option value="math">數學科</option>
+              <option value="sci">自然科</option>
+              <option value="soc">社會科</option>
+            </select>
+          </div>
+        </div>
+      </div>
+
+      <!-- Sub-view 1: Comprehensive Dual-Exam Full Comparison Table -->
+      <div id="viewCompareFull" class="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
+        <div class="px-5 py-3.5 bg-slate-50 border-b border-slate-200 flex flex-wrap items-center justify-between gap-2">
+          <div class="flex items-center space-x-2">
+            <h3 class="text-sm font-bold text-slate-900">班級兩次段考成績對比總冊 (第一次 vs 第二次)</h3>
+            <span class="text-xs text-slate-500 hidden md:inline">• 點擊「診斷卡」可檢視五角雷達與三段評語</span>
+          </div>
+          <div class="flex flex-wrap items-center gap-2 text-xs">
+            <button id="btnBatchAIGenerateDualAnalysis" class="px-3 py-1.5 rounded-lg bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white font-bold shadow-sm flex items-center space-x-1.5 transition active:scale-95">
+              <span>✨ 一鍵 AI 生成全班二次段考比較分析</span>
+            </button>
+            <span class="text-slate-300 hidden sm:inline">|</span>
+            <span class="text-slate-500">名次：<span class="text-emerald-600 font-bold">↑升</span>/<span class="text-rose-600 font-bold">↓降</span></span>
+          </div>
+        </div>
+
+        <div class="overflow-x-auto max-h-[640px]">
+          <table class="w-full text-left border-collapse text-xs sm:text-sm">
+            <thead class="bg-slate-100 text-slate-700 sticky top-0 z-20 shadow-sm">
+              <tr>
+                <th class="py-3 px-3 text-center w-12 border-b border-r border-slate-200">座號</th>
+                <th class="py-3 px-3 w-28 border-b border-r border-slate-200">學生姓名</th>
+                <th class="py-3 px-3 text-center w-28 border-b border-r border-slate-200">特教身分</th>
+                <th class="py-3 px-2 text-center w-20 border-b border-r border-slate-200 bg-blue-50/50">一段平均</th>
+                <th class="py-3 px-2 text-center w-20 border-b border-r border-slate-200 bg-blue-50/50">一段名次</th>
+                <th class="py-3 px-2 text-center w-20 border-b border-r border-slate-200 bg-emerald-50/50">二段平均</th>
+                <th class="py-3 px-2 text-center w-20 border-b border-r border-slate-200 bg-emerald-50/50">二段名次</th>
+                <th class="py-3 px-2.5 text-center w-20 border-b border-r border-slate-200 bg-amber-50/60 font-bold text-amber-900">平均差值</th>
+                <th class="py-3 px-2 text-center w-20 border-b border-r border-slate-200 bg-amber-50/60 font-bold text-amber-900">成長率(%)</th>
+                <th class="py-3 px-2 text-center w-20 border-b border-r border-slate-200">名次異動</th>
+                <th class="py-3 px-3 w-64 border-b border-r border-slate-200 bg-purple-50/60 text-purple-900 font-bold">二次段考綜合比較分析 (可微調或AI生成)</th>
+                <th class="py-3 px-2 text-center w-24 border-b border-slate-200">成長診斷</th>
+              </tr>
+            </thead>
+            <tbody id="compareFullTableBody" class="divide-y divide-slate-200">
+              <!-- Populated dynamically -->
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- Sub-view 2: Progress Ranking (進步獎排行) -->
+      <div id="viewCompareProgressRank" class="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden hidden">
+        <div class="px-5 py-4 bg-gradient-to-r from-amber-500/10 via-amber-50 to-white border-b border-slate-200 flex items-center justify-between">
+          <div class="flex items-center space-x-2">
+            <span class="text-xl">🏆</span>
+            <div>
+              <h3 class="text-sm font-bold text-slate-900">總科目平均進步幅度排行榜 (進步獎推薦名單)</h3>
+              <p class="text-xs text-slate-500 mt-0.5">依兩次段考「總平均進步分數」與「成長率」依序排序，表揚學習勤勉突破之學生</p>
+            </div>
+          </div>
+          <span class="text-xs bg-amber-100 text-amber-800 border border-amber-300 font-bold px-3 py-1 rounded-full">激勵學習導向</span>
+        </div>
+
+        <div class="overflow-x-auto">
+          <table class="w-full text-left border-collapse text-xs sm:text-sm">
+            <thead class="bg-slate-100 text-slate-700">
+              <tr>
+                <th class="py-3 px-3 text-center w-16">進步名次</th>
+                <th class="py-3 px-3 text-center w-14">座號</th>
+                <th class="py-3 px-4 w-28">學生姓名</th>
+                <th class="py-3 px-3 text-center w-28">特教身分</th>
+                <th class="py-3 px-3 text-center w-24">一段平均</th>
+                <th class="py-3 px-3 text-center w-24">二段平均</th>
+                <th class="py-3 px-3 text-center w-28 text-emerald-700 font-bold">進步分數 (+分)</th>
+                <th class="py-3 px-3 text-center w-28 text-emerald-700 font-bold">進步率 (%)</th>
+                <th class="py-3 px-4">進步亮點分析 / 導師激勵建議</th>
+              </tr>
+            </thead>
+            <tbody id="progressRankTableBody" class="divide-y divide-slate-200">
+              <!-- Dynamically populated -->
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- Sub-view 3: Subject Progress Rankings (各科進步榜) -->
+      <div id="viewCompareSubjectRank" class="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden hidden">
+        <div class="px-5 py-4 bg-slate-50 border-b border-slate-200 flex items-center justify-between">
+          <div>
+            <h3 class="text-sm font-bold text-slate-900" id="currentSubjectRankTitle">國文科 進步率排行榜</h3>
+            <p class="text-xs text-slate-500 mt-0.5">依單一學科兩次段考分數進步幅度排序，可發掘該領域潛能突破之學生</p>
+          </div>
+          <span class="text-xs text-slate-500">標準滿分：100 分</span>
+        </div>
+
+        <div class="overflow-x-auto">
+          <table class="w-full text-left border-collapse text-xs sm:text-sm">
+            <thead class="bg-slate-100 text-slate-700">
+              <tr>
+                <th class="py-3 px-3 text-center w-16">學科進步排名</th>
+                <th class="py-3 px-3 text-center w-14">座號</th>
+                <th class="py-3 px-4 w-28">學生姓名</th>
+                <th class="py-3 px-3 text-center w-28">特教身分</th>
+                <th class="py-3 px-3 text-center w-24">一段得分</th>
+                <th class="py-3 px-3 text-center w-24">二段得分</th>
+                <th class="py-3 px-3 text-center w-28 text-emerald-700 font-bold">分數差值</th>
+                <th class="py-3 px-3 text-center w-28 text-emerald-700 font-bold">成長率 (%)</th>
+                <th class="py-3 px-4">學科突破表現評註</th>
+              </tr>
+            </thead>
+            <tbody id="subjectProgressTableBody" class="divide-y divide-slate-200">
+              <!-- Dynamically populated -->
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+    </section>
+
+
+    <!-- ======================================================== -->
+    <!-- TAB: 一般生段考需補考名單與補考成績登錄 (Makeup Exam Hub) -->
+    <!-- ======================================================== -->
+    <section id="tab-makeup" class="space-y-6 hidden">
+      
+      <!-- Top Policy Banner -->
+      <div class="bg-gradient-to-r from-rose-900 via-slate-900 to-indigo-950 rounded-2xl text-white p-6 shadow-md relative overflow-hidden">
+        <div class="relative z-10 max-w-4xl">
+          <div class="inline-flex items-center space-x-2 bg-rose-500/20 border border-rose-400/30 px-3 py-1 rounded-full text-xs font-semibold text-rose-300 mb-3">
+            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+            </svg>
+            <span>各級學校學生成績評量準則 • 補考成績折算規範</span>
+          </div>
+          <h2 class="text-2xl font-bold tracking-tight text-white mb-2">一般生各月段考不及格需補考名冊與成績登錄</h2>
+          <p class="text-xs sm:text-sm text-slate-300 leading-relaxed">
+            依教育部法規，段考評量不及格（未滿60分）之一般生應予辦理補考。系統自動篩選需補考科目，並嚴格遵循法規折算標準：<br>
+            <strong>① 補考超過 60 分者：</strong>以 <strong>60分</strong> 計入正式成績冊。<br>
+            <strong>② 補考未達 60 分者：</strong>比較原段考成績與補考成績，以<strong>「低於60分之最高分數」</strong>採計。<br>
+            經補考折算後，正式成績單與相關報表將清楚加註「補」字與原始／補考分數對照說明。
+          </p>
+        </div>
+      </div>
+
+      <!-- Stage & Five-Subject Selector Card -->
+      <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-5 space-y-4">
+        <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-slate-100">
+          <div class="flex items-center space-x-2">
+            <span class="text-xs font-bold text-slate-600">① 選擇段考次別：</span>
+            <div class="inline-flex p-1 bg-slate-100 rounded-xl border border-slate-200">
+              <button id="btnMakeupSwitchExam1" class="px-4 py-1.5 rounded-lg text-xs font-bold transition flex items-center space-x-1.5 bg-brand-600 text-white shadow-sm">
+                <span>第一次段考需補考</span>
+                <span id="badgeMakeupCountE1" class="ml-1 bg-white/20 text-white px-1.5 py-0.2 rounded-full text-[10px]">0</span>
+              </button>
+              <button id="btnMakeupSwitchExam2" class="px-4 py-1.5 rounded-lg text-xs font-bold transition flex items-center space-x-1.5 text-slate-700 hover:text-slate-900">
+                <span>第二次段考需補考</span>
+                <span id="badgeMakeupCountE2" class="ml-1 bg-slate-200 text-slate-700 px-1.5 py-0.2 rounded-full text-[10px]">0</span>
+              </button>
+            </div>
+          </div>
+
+          <div class="flex flex-wrap items-center gap-2 text-xs">
+            <button id="btnPrintMakeupSubjSheet" class="px-3.5 py-1.5 rounded-lg bg-indigo-600 hover:bg-indigo-700 text-white font-semibold transition shadow-sm flex items-center space-x-1.5">
+              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" /></svg>
+              <span>列印單科補考表單</span>
+            </button>
+            <button id="btnPrintMakeupNotice" class="px-3.5 py-1.5 rounded-lg bg-rose-600 hover:bg-rose-700 text-white font-semibold transition shadow-sm flex items-center space-x-1.5">
+              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" /></svg>
+              <span>列印段考補考名冊與通知</span>
+            </button>
+          </div>
+        </div>
+
+        <!-- Five Subject Selection Tabs -->
+        <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+          <div class="flex flex-wrap items-center gap-2">
+            <span class="text-xs font-bold text-slate-600 mr-1">② 點選五科切換未滿60分補考表單：</span>
+            <button data-mk-sub="chi" class="mk-sub-btn px-3.5 py-2 rounded-xl text-xs font-bold transition flex items-center space-x-1.5 bg-slate-900 text-white shadow-sm">
+              <span>📕 國文科</span>
+              <span id="badgeMkSub_chi" class="bg-rose-500 text-white px-1.5 py-0.2 rounded-full text-[10px]">0人</span>
+            </button>
+            <button data-mk-sub="eng" class="mk-sub-btn px-3.5 py-2 rounded-xl text-xs font-bold transition flex items-center space-x-1.5 bg-slate-100 text-slate-700 hover:bg-slate-200">
+              <span>📘 英語科</span>
+              <span id="badgeMkSub_eng" class="bg-slate-300 text-slate-700 px-1.5 py-0.2 rounded-full text-[10px]">0人</span>
+            </button>
+            <button data-mk-sub="math" class="mk-sub-btn px-3.5 py-2 rounded-xl text-xs font-bold transition flex items-center space-x-1.5 bg-slate-100 text-slate-700 hover:bg-slate-200">
+              <span>📐 數學科</span>
+              <span id="badgeMkSub_math" class="bg-slate-300 text-slate-700 px-1.5 py-0.2 rounded-full text-[10px]">0人</span>
+            </button>
+            <button data-mk-sub="sci" class="mk-sub-btn px-3.5 py-2 rounded-xl text-xs font-bold transition flex items-center space-x-1.5 bg-slate-100 text-slate-700 hover:bg-slate-200">
+              <span>🔬 自然科</span>
+              <span id="badgeMkSub_sci" class="bg-slate-300 text-slate-700 px-1.5 py-0.2 rounded-full text-[10px]">0人</span>
+            </button>
+            <button data-mk-sub="soc" class="mk-sub-btn px-3.5 py-2 rounded-xl text-xs font-bold transition flex items-center space-x-1.5 bg-slate-100 text-slate-700 hover:bg-slate-200">
+              <span>🌏 社會科</span>
+              <span id="badgeMkSub_soc" class="bg-slate-300 text-slate-700 px-1.5 py-0.2 rounded-full text-[10px]">0人</span>
+            </button>
+            <button data-mk-sub="all" class="mk-sub-btn px-3.5 py-2 rounded-xl text-xs font-bold transition flex items-center space-x-1.5 bg-slate-100 text-slate-700 hover:bg-slate-200 border border-slate-300">
+              <span>📋 五科總覽</span>
+              <span id="badgeMkSub_all" class="bg-slate-300 text-slate-700 px-1.5 py-0.2 rounded-full text-[10px]">0科次</span>
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Makeup Table Container -->
+      <div class="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
+        <div class="px-5 py-3.5 bg-slate-50 border-b border-slate-200 flex flex-wrap items-center justify-between gap-2">
+          <div>
+            <h3 class="text-sm font-bold text-slate-900 flex items-center space-x-2">
+              <span id="makeupTableTitle">第一次段考 • 一般生不及格學科補考名單</span>
+            </h3>
+            <p class="text-[11px] text-slate-500 mt-0.5">※ 特教生（資源班／IEP）採個別化教育評量標準，不列入一般生段考常態補考名單中。</p>
+          </div>
+          <div class="flex items-center space-x-2 text-xs">
+            <span class="inline-flex items-center px-2 py-0.5 rounded text-[11px] font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200">補考≥60分: 採計60分</span>
+            <span class="inline-flex items-center px-2 py-0.5 rounded text-[11px] font-semibold bg-amber-50 text-amber-700 border border-amber-200">補考&lt;60分: 取最高分採計</span>
+          </div>
+        </div>
+
+        <div class="overflow-x-auto">
+          <table class="w-full text-left border-collapse text-xs sm:text-sm">
+            <thead class="bg-slate-100 text-slate-700 border-b border-slate-200">
+              <tr>
+                <th class="py-3 px-3 text-center w-20">班級</th>
+                <th class="py-3 px-2 text-center w-14">座號</th>
+                <th class="py-3 px-3 w-24">學生姓名</th>
+                <th class="py-3 px-2 text-center w-24">身分別</th>
+                <th class="py-3 px-3 text-center w-20">補考科目</th>
+                <th class="py-3 px-3 text-center w-24 text-rose-700 font-bold">原段考(&lt;60)</th>
+                <th class="py-3 px-4 text-center w-36 bg-amber-50/60 font-bold text-amber-900">填入補考成績</th>
+                <th class="py-3 px-3 text-center w-28 text-emerald-800 font-bold bg-emerald-50/40">折算採計成績</th>
+                <th class="py-3 px-4">補考法規採計說明</th>
+                <th class="py-3 px-3 text-center w-24">狀態</th>
+              </tr>
+            </thead>
+            <tbody id="makeupTableBody" class="divide-y divide-slate-200">
+              <!-- Dynamically populated rows -->
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+    </section>
+
+    <!-- ========================================== -->
+    <!-- TAB 3: 特殊生評量關懷專區 (Special Ed Hub) -->
+    <!-- ========================================== -->
+    <section id="tab-special" class="space-y-6 hidden">
+      
+      <!-- Special Ed Banner -->
+      <div class="bg-gradient-to-r from-indigo-900 via-indigo-800 to-purple-900 rounded-2xl text-white p-6 shadow-md relative overflow-hidden">
+        <div class="relative z-10 max-w-3xl">
+          <div class="inline-flex items-center space-x-2 bg-indigo-700/60 border border-indigo-400/30 px-3 py-1 rounded-full text-xs font-medium text-indigo-200 mb-3">
+            <svg class="w-3.5 h-3.5 text-amber-300" fill="currentColor" viewBox="0 0 20 20">
+              <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
+            </svg>
+            <span>特推會與小校多元支持專案</span>
+          </div>
+          <h2 class="text-2xl font-bold tracking-tight text-white mb-2">特殊需求與特教生評量關懷專區</h2>
+          <p class="text-sm text-indigo-200 leading-relaxed">
+            依特殊教育法落實個別化教育計畫（IEP）之段考考場服務與個別評量調整。追蹤特殊生在第一次與第二次段考中的個別突破，提供報讀、延長時間、免列常態名次等保障。
+          </p>
+        </div>
+      </div>
+
+      <!-- Quick Metrics Cards -->
+      <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+        <div class="bg-white p-5 rounded-xl border border-slate-200 shadow-sm flex items-center space-x-4">
+          <div class="w-12 h-12 rounded-xl bg-purple-50 text-purple-600 flex items-center justify-center border border-purple-100">
+            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
+            </svg>
+          </div>
+          <div>
+            <div class="text-xs font-medium text-slate-500">班級特殊生總數</div>
+            <div id="statTotalSpecial" class="text-2xl font-bold text-slate-800">4 人</div>
+            <div class="text-[11px] text-purple-600 font-medium mt-0.5">佔全班受測生約 <span id="statSpecialPercent">27%</span></div>
+          </div>
+        </div>
+
+        <div class="bg-white p-5 rounded-xl border border-slate-200 shadow-sm flex items-center space-x-4">
+          <div class="w-12 h-12 rounded-xl bg-indigo-50 text-indigo-600 flex items-center justify-center border border-indigo-100">
+            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+            </svg>
+          </div>
+          <div>
+            <div class="text-xs font-medium text-slate-500">免列常態名次 (IEP)</div>
+            <div id="statTotalExcludedRank" class="text-2xl font-bold text-slate-800">2 人</div>
+            <div class="text-[11px] text-slate-500 mt-0.5">個別化教育目標評量</div>
+          </div>
+        </div>
+
+        <div class="bg-white p-5 rounded-xl border border-slate-200 shadow-sm flex items-center space-x-4">
+          <div class="w-12 h-12 rounded-xl bg-amber-50 text-amber-600 flex items-center justify-center border border-amber-100">
+            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+            </svg>
+          </div>
+          <div>
+            <div class="text-xs font-medium text-slate-500">需考場評量調整</div>
+            <div id="statTotalAccommodations" class="text-2xl font-bold text-slate-800">3 人</div>
+            <div class="text-[11px] text-amber-600 font-medium mt-0.5">提供報讀/延長作答</div>
+          </div>
+        </div>
+
+        <div class="bg-white p-5 rounded-xl border border-slate-200 shadow-sm flex items-center space-x-4">
+          <div class="w-12 h-12 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center border border-emerald-100">
+            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+            </svg>
+          </div>
+          <div>
+            <div class="text-xs font-medium text-slate-500">學習扶助對象</div>
+            <div id="statTotalSupport" class="text-2xl font-bold text-slate-800">2 人</div>
+            <div class="text-[11px] text-emerald-600 font-medium mt-0.5">落實增能課程輔導</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Special Students Full School Table -->
+      <div class="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
+        <div class="p-5 border-b border-slate-200 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+          <div>
+            <h3 class="text-base font-bold text-slate-900 flex items-center space-x-2">
+              <span class="w-2.5 h-2.5 rounded-full bg-purple-600"></span>
+              <span>特殊需求學生兩次段考評量與成長追蹤清冊</span>
+            </h3>
+            <p class="text-xs text-slate-500 mt-1">此名冊提供特推會、特教教師與導師專用，記錄一段與二段之個別目標達成情形成長。</p>
+          </div>
+
+          <div class="flex items-center space-x-2">
+            <button id="btnPrintSpecialReport" class="px-3.5 py-1.5 text-xs font-semibold rounded-lg bg-indigo-600 hover:bg-indigo-700 text-white shadow-sm flex items-center space-x-1.5 transition">
+              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" />
+              </svg>
+              <span>列印特推會備查總表</span>
+            </button>
+          </div>
+        </div>
+
+        <div class="overflow-x-auto">
+          <table class="w-full text-left border-collapse text-xs sm:text-sm">
+            <thead class="bg-slate-100 text-slate-700 border-b border-slate-200">
+              <tr>
+                <th class="py-3 px-3 font-semibold text-center w-14">座號</th>
+                <th class="py-3 px-3 font-semibold w-24">學生姓名</th>
+                <th class="py-3 px-3 font-semibold w-28 text-center">特教身分別</th>
+                <th class="py-3 px-3 font-semibold w-48">評量與考場調整措施</th>
+                <th class="py-3 px-3 font-semibold text-center w-28">排名機制</th>
+                <th class="py-3 px-2 text-center w-20">一段平均</th>
+                <th class="py-3 px-2 text-center w-20">二段平均</th>
+                <th class="py-3 px-2 text-center w-20 text-emerald-700 font-bold">進步差值</th>
+                <th class="py-3 px-4 font-semibold">個別化教育目標評量成長備註</th>
+                <th class="py-3 px-3 font-semibold text-center w-20">操作</th>
+              </tr>
+            </thead>
+            <tbody id="specialTableBody" class="divide-y divide-slate-200">
+              <!-- Dynamically populated special students -->
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+    </section>
+
+
+    <!-- ========================================== -->
+    <!-- TAB 4: 學習品質分析圖表 (Analytics & Stats) -->
+    <!-- ========================================== -->
+    <section id="tab-stats" class="space-y-6 hidden">
+      
+      <!-- Stats Control Card -->
+      <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-5">
+        <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+          <div>
+            <h2 class="text-base font-bold text-slate-900">班級學習品質診斷與學科分佈消長</h2>
+            <p class="text-xs text-slate-500 mt-1">對照第一次與第二次段考各科平均分、及格率變動及五分距級距常態分佈</p>
+          </div>
+        </div>
+      </div>
+
+      <!-- Charts Grid -->
+      <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <!-- Chart 1: Dual Exam Subject Averages -->
+        <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-5 flex flex-col">
+          <div class="flex items-center justify-between mb-4">
+            <h3 class="text-sm font-bold text-slate-800 flex items-center space-x-2">
+              <span class="w-2.5 h-2.5 rounded-full bg-brand-600"></span>
+              <span>各科平均分數消長對照 (一段 vs 二段)</span>
+            </h3>
+            <span class="text-[11px] text-slate-400">藍色:一段 / 綠色:二段</span>
+          </div>
+          <div class="relative h-72 w-full flex-1">
+            <canvas id="subjectAvgChart"></canvas>
+          </div>
+        </div>
+
+        <!-- Chart 2: Dual Exam Grade Tier Distribution Comparison -->
+        <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-5 flex flex-col">
+          <div class="flex items-center justify-between mb-4">
+            <h3 class="text-sm font-bold text-slate-800 flex items-center space-x-2">
+              <span class="w-2.5 h-2.5 rounded-full bg-emerald-600"></span>
+              <span>兩次段考總平均級距分佈消長對照 (五分距對比)</span>
+            </h3>
+            <span class="text-[11px] text-slate-400">藍色:一段人數 / 綠色:二段人數</span>
+          </div>
+          <div class="relative h-72 w-full flex-1">
+            <canvas id="gradeDistributionChart"></canvas>
+          </div>
+        </div>
+      </div>
+
+      <!-- Dual Exam Five Standard Indicators Table (五標分析表) -->
+      <div class="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
+        <div class="px-5 py-4 border-b border-slate-200 flex items-center justify-between">
+          <h3 class="text-sm font-bold text-slate-800">各科五標指標與及格率消長對照表</h3>
+          <span class="text-xs text-slate-500">頂標(88%) / 前標(75%) / 均標(50%) / 後標(25%) / 底標(12%)</span>
+        </div>
+        <div class="overflow-x-auto">
+          <table class="w-full text-left border-collapse text-xs sm:text-sm">
+            <thead class="bg-slate-50 text-slate-700">
+              <tr>
+                <th class="py-3 px-4 font-semibold">科目名稱</th>
+                <th class="py-3 px-3 font-semibold text-center">段考次別</th>
+                <th class="py-3 px-3 font-semibold text-center text-purple-700">頂標</th>
+                <th class="py-3 px-3 font-semibold text-center text-blue-700">前標</th>
+                <th class="py-3 px-3 font-semibold text-center text-emerald-700">均標</th>
+                <th class="py-3 px-3 font-semibold text-center text-amber-700">後標</th>
+                <th class="py-3 px-3 font-semibold text-center text-rose-700">底標</th>
+                <th class="py-3 px-3 font-semibold text-center">平均分</th>
+                <th class="py-3 px-3 font-semibold text-center">及格率</th>
+                <th class="py-3 px-3 font-semibold text-center text-brand-700 font-bold">品質指標變動</th>
+              </tr>
+            </thead>
+            <tbody id="fiveStandardsTableBody" class="divide-y divide-slate-200">
+              <!-- Dynamically populated -->
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+    </section>
+
+
+    <!-- ========================================== -->
+    <!-- TAB 5: 列印與核章專區 (Print Hub) -->
+    <!-- ========================================== -->
+    <section id="tab-print" class="space-y-6 hidden">
+      
+      <!-- Print Settings Header -->
+      <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-5">
+        <div class="flex flex-col md:flex-row md:items-center justify-between gap-4">
+          <div>
+            <h2 class="text-base font-bold text-slate-900">列印與核章文件預覽</h2>
+            <p class="text-xs text-slate-500 mt-1">提供兩次段考成長追蹤對照冊、班級正式成績冊、特推會備查冊與個人雙試成績通知單</p>
+          </div>
+
+          <!-- Print Trigger & Format Switcher -->
+          <div class="flex flex-wrap items-center gap-2">
+            <select id="printFormatSelect" class="text-xs border border-slate-300 rounded-lg px-3 py-1.5 focus:outline-none focus:ring-2 focus:ring-brand-500 bg-white font-medium">
+              <option value="dual-compare-sheet">格式一：班級兩次段考學習成長對比分析冊 (含進步獎與全核章)</option>
+              <option value="exam2-roster">格式二：第二次段考班級正式成績冊</option>
+              <option value="exam1-roster">格式三：第一次段考班級正式成績冊</option>
+              <option value="special-roster">格式四：特殊需求學生評量與考場調整追蹤備查總表</option>
+              <option value="individual-growth-cards">格式五：個別學生兩次段考學習成長對比通知單 (家長回條聯)</option>
+              <option value="individual-exam1-cards">格式六：個別學生第一次段考成績通知單 (獨立一段評語+家長回條聯)</option>
+              <option value="individual-exam2-cards">格式六之二：個別學生第二次段考成績通知單 (獨立二段評語+家長回條聯)</option>
+              <option value="makeup-exam-roster">格式七：定期評量未滿60分需補考名冊 — 五科彙整總表 (含行政核章)</option>
+              <option value="makeup-exam-roster-subj">格式八：定期評量未滿60分需補考名冊 — 當前選定單科表單 (含行政核章)</option>
+            </select>
+
+            <label class="flex items-center space-x-1.5 text-xs text-slate-600 bg-slate-50 px-2.5 py-1.5 rounded-lg border border-slate-200 cursor-pointer">
+              <input type="checkbox" id="chkPrintHideSpecial" class="rounded text-brand-600 focus:ring-brand-500">
+              <span>公開張貼版 (隱藏特教身分以符合學生隱私法規)</span>
+            </label>
+
+            <button id="btnExecutePrint" class="px-4 py-2 text-xs font-semibold rounded-lg bg-brand-600 hover:bg-brand-700 text-white shadow-sm flex items-center space-x-1.5 transition active:scale-95">
+              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" />
+              </svg>
+              <span>立即啟動列印 / 輸出 PDF</span>
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Live Printable Preview Box -->
+      <div class="bg-slate-200/80 p-4 sm:p-8 rounded-xl border border-slate-300 shadow-inner flex justify-center">
+        <div id="printSheetPreviewContainer" class="bg-white w-full max-w-5xl p-6 sm:p-10 shadow-lg rounded-sm text-slate-900 border border-slate-200 min-h-[600px]">
+          <!-- Injected printable view -->
+        </div>
+      </div>
+
+    </section>
+
+
+    <!-- ========================================== -->
+    <!-- TAB 6: 系統與資料備份 (Settings & Backups) -->
+    <!-- ========================================== -->
+    <section id="tab-settings" class="space-y-6 hidden">
+      
+      <!-- School Info Settings Card -->
+      <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-6">
+        <h2 class="text-base font-bold text-slate-900 mb-4 pb-2 border-b border-slate-100 flex items-center space-x-2">
+          <svg class="w-5 h-5 text-brand-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
+          </svg>
+          <span>學校與單一班級基本設定</span>
+        </h2>
+
+        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+          <div>
+            <label class="block text-xs font-medium text-slate-600 mb-1">學校全銜</label>
+            <input type="text" id="settingSchoolName" class="w-full text-xs rounded-lg border border-slate-300 px-3 py-2 focus:ring-2 focus:ring-brand-500">
+          </div>
+          <div>
+            <label class="block text-xs font-medium text-slate-600 mb-1">班級名稱</label>
+            <input type="text" id="settingClassName" class="w-full text-xs rounded-lg border border-slate-300 px-3 py-2 focus:ring-2 focus:ring-brand-500" placeholder="例如: 七年甲班">
+          </div>
+          <div>
+            <label class="block text-xs font-medium text-slate-600 mb-1">班級導師</label>
+            <input type="text" id="settingTeacher" class="w-full text-xs rounded-lg border border-slate-300 px-3 py-2 focus:ring-2 focus:ring-brand-500" placeholder="例如: 許文華 老師">
+          </div>
+          <div>
+            <label class="block text-xs font-medium text-slate-600 mb-1">學年度 / 學期</label>
+            <input type="text" id="settingAcademicYear" class="w-full text-xs rounded-lg border border-slate-300 px-3 py-2 focus:ring-2 focus:ring-brand-500" placeholder="115學年度 第1學期">
+          </div>
+        </div>
+
+        <div class="mt-4 flex justify-end">
+          <button id="btnSaveSchoolMeta" class="px-4 py-2 bg-brand-600 hover:bg-brand-700 text-white text-xs font-semibold rounded-lg shadow-sm transition">
+            儲存學校設定
+          </button>
+        </div>
+      </div>
+
+      <!-- Class Data Batch Import & Sample Download Card -->
+      <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-6">
+        <h3 class="text-sm font-bold text-slate-900 mb-2 flex items-center space-x-2">
+          <svg class="w-5 h-5 text-brand-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
+          </svg>
+          <span>班級學生名冊與雙次段考成績匯入 / 範例檔</span>
+        </h3>
+        <p class="text-xs text-slate-500 mb-4 leading-relaxed">
+          支援以 Excel 相容之 CSV 試算表或純文字檔 (.txt) 批次匯入全班學生名單、特教身分及兩次段考成績。提供標準範例檔案下載供快速填寫套用。
+        </p>
+
+        <div class="flex flex-wrap items-center gap-3">
+          <button id="btnDownloadSampleCSV" class="px-3.5 py-2 text-xs font-semibold rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white shadow-sm flex items-center space-x-1.5 transition active:scale-95">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" /></svg>
+            <span>下載班級匯入範例檔 (.csv / Excel)</span>
+          </button>
+
+          <button id="btnDownloadSampleTXT" class="px-3.5 py-2 text-xs font-semibold rounded-lg bg-slate-700 hover:bg-slate-800 text-white shadow-sm flex items-center space-x-1.5 transition active:scale-95">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" /></svg>
+            <span>下載純文字範例檔 (.txt)</span>
+          </button>
+
+          <label class="px-3.5 py-2 text-xs font-semibold rounded-lg bg-brand-600 hover:bg-brand-700 text-white shadow-sm flex items-center space-x-1.5 cursor-pointer transition active:scale-95">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" /></svg>
+            <span>匯入班級名冊與成績 (.csv / .txt)</span>
+            <input type="file" id="inputImportClassFile" accept=".csv, .txt" class="hidden">
+          </label>
+        </div>
+      </div>
+
+      <!-- Data Backup & File Export/Import -->
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+        
+        <!-- JSON Full Backup / Restore -->
+        <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-6 flex flex-col justify-between">
+          <div>
+            <h3 class="text-sm font-bold text-slate-900 mb-2 flex items-center space-x-2">
+              <svg class="w-4 h-4 text-emerald-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
+              </svg>
+              <span>完整成績資料庫備份 (JSON 格式)</span>
+            </h3>
+            <p class="text-xs text-slate-500 mb-4 leading-relaxed">
+              下載包含一段、二段成績、進步率與特殊生備註之完整本機備份檔，隨時可還原匯入。
+            </p>
+          </div>
+
+          <div class="flex flex-wrap items-center gap-3 pt-4 border-t border-slate-100">
+            <button id="btnExportJSON" class="px-3.5 py-2 text-xs font-semibold rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white shadow-sm flex items-center space-x-1.5 transition">
+              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+              </svg>
+              <span>匯出完整資料庫 (.json)</span>
+            </button>
+
+            <label class="px-3.5 py-2 text-xs font-semibold rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 border border-slate-300 shadow-sm flex items-center space-x-1.5 cursor-pointer transition">
+              <svg class="w-4 h-4 text-slate-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
+              </svg>
+              <span>匯入備份還原檔</span>
+              <input type="file" id="inputImportJSON" accept=".json" class="hidden">
+            </label>
+          </div>
+        </div>
+
+        <!-- Excel / CSV Export -->
+        <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-6 flex flex-col justify-between">
+          <div>
+            <h3 class="text-sm font-bold text-slate-900 mb-2 flex items-center space-x-2">
+              <svg class="w-4 h-4 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+              </svg>
+              <span>匯出 Excel 相容試算表 (CSV 格式)</span>
+            </h3>
+            <p class="text-xs text-slate-500 mb-4 leading-relaxed">
+              標準 UTF-8 含 BOM 編碼，支援匯出兩次段考完整比對表或特殊生追蹤表，Excel 開啟不亂碼。
+            </p>
+          </div>
+
+          <div class="flex flex-wrap items-center gap-3 pt-4 border-t border-slate-100">
+            <button id="btnExportCSVDualCompare" class="px-3.5 py-2 text-xs font-semibold rounded-lg bg-blue-600 hover:bg-blue-700 text-white shadow-sm flex items-center space-x-1.5 transition">
+              <span>匯出兩次段考對照與進步分析 CSV</span>
+            </button>
+            <button id="btnExportCSVMakeup" class="px-3.5 py-2 text-xs font-semibold rounded-lg bg-rose-600 hover:bg-rose-700 text-white shadow-sm flex items-center space-x-1.5 transition">
+              <span>匯出一般生不及格需補考清冊 CSV</span>
+            </button>
+            <button id="btnExportCSVSpecial" class="px-3.5 py-2 text-xs font-semibold rounded-lg bg-indigo-600 hover:bg-indigo-700 text-white shadow-sm flex items-center space-x-1.5 transition">
+              <span>匯出特殊需求學生名冊 CSV</span>
+            </button>
+          </div>
+        </div>
+
+      </div>
+
+      <!-- Reset & Demo Data Card -->
+      <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-6">
+        <h3 class="text-sm font-bold text-slate-900 mb-2 text-rose-700">資料管理與範例重設</h3>
+        <p class="text-xs text-slate-500 mb-4">
+          隨時可恢復小型學校單一班級、具備兩次完整段考分數（含進步顯著個案與各類特教身分）之示範資料。
+        </p>
+
+        <div class="flex flex-wrap items-center gap-3">
+          <button id="btnReloadDemoData" class="px-3.5 py-2 text-xs font-semibold rounded-lg bg-amber-500 hover:bg-amber-600 text-slate-900 transition shadow-sm">
+            重設並載入完整示範資料 (15位學生雙次段考)
+          </button>
+          <button id="btnClearAllData" class="px-3.5 py-2 text-xs font-semibold rounded-lg bg-rose-50 text-rose-700 border border-rose-300 hover:bg-rose-100 transition">
+            清空所有學生資料 (全新手動建立)
+          </button>
+        </div>
+      </div>
+
+    </section>
+
+  </main>
+
+  <!-- ========================================== -->
+  <!-- DEDICATED PRINT CONTAINER (Print-Only View) -->
+  <!-- ========================================== -->
+  <div id="printContainer" class="print-only print-container">
+    <!-- Populated during print invocation -->
+  </div>
+
+
+  <!-- ========================================== -->
+  <!-- MODAL 1: 編輯特殊需求學生設定 (Special Ed Modal) -->
+  <!-- ========================================== -->
+  <div id="specialStudentModal" class="fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-50 flex items-center justify-center p-4 hidden no-print">
+    <div class="bg-white rounded-2xl shadow-2xl max-w-lg w-full overflow-hidden border border-slate-200 animate-in fade-in zoom-in-95 duration-150">
+      <div class="px-6 py-4 bg-slate-900 text-white flex items-center justify-between">
+        <div class="flex items-center space-x-2">
+          <span class="w-3 h-3 rounded-full bg-amber-400"></span>
+          <h3 class="text-base font-bold">特殊需求學生評量與身分設定</h3>
+        </div>
+        <button id="btnCloseSpecialModal" class="text-slate-400 hover:text-white p-1 rounded-lg">
+          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+          </svg>
+        </button>
+      </div>
+
+      <div class="p-6 space-y-4 max-h-[80vh] overflow-y-auto text-xs sm:text-sm">
+        <div class="bg-indigo-50 border border-indigo-200 rounded-xl p-3 flex items-center justify-between">
+          <div>
+            <span class="text-xs text-indigo-700">當前學生：</span>
+            <div id="modalStudentName" class="text-base font-bold text-indigo-950">陳小明</div>
+          </div>
+          <div class="text-right">
+            <span class="text-xs text-indigo-700">班級座號：</span>
+            <div id="modalStudentClassSeat" class="text-sm font-semibold text-indigo-900">七年甲班 01號</div>
+          </div>
+        </div>
+
+        <!-- Special Status Radio Group -->
+        <div>
+          <label class="block text-xs font-bold text-slate-700 mb-2">特教與輔導身分別：</label>
+          <div class="grid grid-cols-2 gap-2">
+            <label class="flex items-center space-x-2 p-2.5 rounded-lg border border-slate-200 hover:bg-slate-50 cursor-pointer">
+              <input type="radio" name="modalSpecialType" value="general" class="text-brand-600 focus:ring-brand-500">
+              <span class="font-medium text-slate-700">一般生 (無特殊註記)</span>
+            </label>
+            <label class="flex items-center space-x-2 p-2.5 rounded-lg border border-purple-200 bg-purple-50/50 hover:bg-purple-50 cursor-pointer">
+              <input type="radio" name="modalSpecialType" value="resource" class="text-purple-600 focus:ring-purple-500">
+              <span class="font-bold text-purple-900">資源班 (Resource)</span>
+            </label>
+            <label class="flex items-center space-x-2 p-2.5 rounded-lg border border-indigo-200 bg-indigo-50/50 hover:bg-indigo-50 cursor-pointer">
+              <input type="radio" name="modalSpecialType" value="iep" class="text-indigo-600 focus:ring-indigo-500">
+              <span class="font-bold text-indigo-900">特教生 (IEP計畫)</span>
+            </label>
+            <label class="flex items-center space-x-2 p-2.5 rounded-lg border border-amber-200 bg-amber-50/50 hover:bg-amber-50 cursor-pointer">
+              <input type="radio" name="modalSpecialType" value="support" class="text-amber-600 focus:ring-amber-500">
+              <span class="font-bold text-amber-900">學習扶助 (補救教學)</span>
+            </label>
+            <label class="flex items-center space-x-2 p-2.5 rounded-lg border border-rose-200 bg-rose-50/50 hover:bg-rose-50 cursor-pointer">
+              <input type="radio" name="modalSpecialType" value="disability" class="text-rose-600 focus:ring-rose-500">
+              <span class="font-bold text-rose-900">身心障礙特殊考場</span>
+            </label>
+            <label class="flex items-center space-x-2 p-2.5 rounded-lg border border-emerald-200 bg-emerald-50/50 hover:bg-emerald-50 cursor-pointer">
+              <input type="radio" name="modalSpecialType" value="gifted" class="text-emerald-600 focus:ring-emerald-500">
+              <span class="font-bold text-emerald-900">資賦優異個別方案</span>
+            </label>
+          </div>
+        </div>
+
+        <!-- Accommodations Checkbox Group -->
+        <div class="pt-3 border-t border-slate-200">
+          <label class="block text-xs font-bold text-slate-700 mb-2">評量與考場調整措施 (可複選)：</label>
+          <div class="grid grid-cols-2 gap-2 text-xs">
+            <label class="flex items-center space-x-2 p-2 rounded-lg bg-slate-50 border border-slate-200 cursor-pointer">
+              <input type="checkbox" id="chkAccTime" value="延長作答時間(20分鐘)" class="rounded text-brand-600 focus:ring-brand-500">
+              <span>延長作答時間 (+20分)</span>
+            </label>
+            <label class="flex items-center space-x-2 p-2 rounded-lg bg-slate-50 border border-slate-200 cursor-pointer">
+              <input type="checkbox" id="chkAccRead" value="試卷報讀/語音輔助" class="rounded text-brand-600 focus:ring-brand-500">
+              <span>試卷報讀 / 語音輔助</span>
+            </label>
+            <label class="flex items-center space-x-2 p-2 rounded-lg bg-slate-50 border border-slate-200 cursor-pointer">
+              <input type="checkbox" id="chkAccFont" value="放大字體試卷(A3/24pt)" class="rounded text-brand-600 focus:ring-brand-500">
+              <span>放大字體試卷 / 點字</span>
+            </label>
+            <label class="flex items-center space-x-2 p-2 rounded-lg bg-slate-50 border border-slate-200 cursor-pointer">
+              <input type="checkbox" id="chkAccRoom" value="獨立抽離考場" class="rounded text-brand-600 focus:ring-brand-500">
+              <span>獨立抽離考場 / 專人監考</span>
+            </label>
+            <label class="flex items-center space-x-2 p-2 rounded-lg bg-slate-50 border border-slate-200 cursor-pointer">
+              <input type="checkbox" id="chkAccOral" value="口語作答/電腦作答" class="rounded text-brand-600 focus:ring-brand-500">
+              <span>口語作答 / 電腦輔助作答</span>
+            </label>
+            <label class="flex items-center space-x-2 p-2 rounded-lg bg-slate-50 border border-slate-200 cursor-pointer">
+              <input type="checkbox" id="chkAccCustom" value="個別化評量目標試卷" class="rounded text-brand-600 focus:ring-brand-500">
+              <span>個別化評量目標試卷</span>
+            </label>
+          </div>
+        </div>
+
+        <!-- Ranking Exclusion Toggle -->
+        <div class="bg-amber-50/80 border border-amber-200 rounded-xl p-3.5">
+          <label class="flex items-start space-x-3 cursor-pointer">
+            <input type="checkbox" id="modalExcludeRank" class="mt-0.5 rounded text-amber-600 focus:ring-amber-500 w-4 h-4">
+            <div>
+              <span class="font-bold text-amber-900 text-xs sm:text-sm">免列常態排名 (IEP 評量保護)</span>
+              <p class="text-[11px] text-amber-800 mt-0.5 leading-normal">
+                勾選後，該生段考成績保留完整登錄與進步計算，但在常態名次中標示為「IEP免列」，保障特教生受教權益。
+              </p>
+            </div>
+          </label>
+        </div>
+
+        <!-- Separate Exam 1, Exam 2, and Dual Comparison Notes with AI Generation -->
+        <div class="space-y-3 pt-2 border-t border-slate-200">
+          <div>
+            <div class="flex items-center justify-between mb-1">
+              <label class="text-xs font-bold text-blue-800">📘 第一次段考導師評語 (一段成績冊/通知單)：</label>
+              <button type="button" id="btnModalAIGen1" class="px-2 py-0.5 rounded bg-blue-100 hover:bg-blue-200 text-blue-800 text-[11px] font-bold transition flex items-center space-x-1">
+                <span>✨ AI 生成一段評語</span>
+              </button>
+            </div>
+            <textarea id="modalNotes1" rows="2" class="w-full text-xs rounded-lg border border-blue-200 bg-blue-50/30 p-2 focus:ring-2 focus:ring-blue-500" placeholder="針對學生第一次段考各科表現之獨立評語與勉勵..."></textarea>
+          </div>
+          <div>
+            <div class="flex items-center justify-between mb-1">
+              <label class="text-xs font-bold text-emerald-800">📗 第二次段考導師評語 (二段成績冊/通知單)：</label>
+              <button type="button" id="btnModalAIGen2" class="px-2 py-0.5 rounded bg-emerald-100 hover:bg-emerald-200 text-emerald-800 text-[11px] font-bold transition flex items-center space-x-1">
+                <span>✨ AI 生成二段評語</span>
+              </button>
+            </div>
+            <textarea id="modalNotes2" rows="2" class="w-full text-xs rounded-lg border border-emerald-200 bg-emerald-50/30 p-2 focus:ring-2 focus:ring-emerald-500" placeholder="針對學生第二次段考各科表現之獨立評語與勉勵..."></textarea>
+          </div>
+          <div>
+            <div class="flex items-center justify-between mb-1">
+              <label class="text-xs font-bold text-purple-900">📊 兩次段考綜合比較分析 (合併對比報表)：</label>
+              <button type="button" id="btnModalAIGenDual" class="px-2 py-0.5 rounded bg-purple-100 hover:bg-purple-200 text-purple-800 text-[11px] font-bold transition flex items-center space-x-1">
+                <span>✨ AI 生成二次比較分析</span>
+              </button>
+            </div>
+            <textarea id="modalSpecialNotes" rows="2" class="w-full text-xs rounded-lg border border-purple-200 bg-purple-50/30 p-2 focus:ring-2 focus:ring-purple-500" placeholder="綜合分析兩次段考進步消長情形，或記錄特教/資源班個別化調整說明..."></textarea>
+          </div>
+        </div>
+      </div>
+
+      <div class="px-6 py-4 bg-slate-50 border-t border-slate-200 flex items-center justify-end space-x-3">
+        <button id="btnCancelSpecialModal" class="px-4 py-2 text-xs font-medium text-slate-600 hover:text-slate-800 transition">取消</button>
+        <button id="btnSaveSpecialModal" class="px-5 py-2 text-xs font-semibold rounded-lg bg-brand-600 hover:bg-brand-700 text-white shadow-sm transition">儲存特教設定</button>
+      </div>
+    </div>
+  </div>
+
+
+  <!-- ========================================== -->
+  <!-- MODAL 2: 個人學習成長診斷卡 (Student Growth Card Modal) -->
+  <!-- ========================================== -->
+  <div id="studentGrowthModal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-4 hidden no-print">
+    <div class="bg-white rounded-2xl shadow-2xl max-w-2xl w-full overflow-hidden border border-slate-200 animate-in fade-in zoom-in-95 duration-150">
+      <div class="px-6 py-4 bg-brand-900 text-white flex items-center justify-between">
+        <div class="flex items-center space-x-2">
+          <svg class="w-5 h-5 text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 8v8m-4-5v5m-4-2v2m-2 4h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+          </svg>
+          <h3 class="text-base font-bold">個人兩次段考學習成長診斷卡</h3>
+        </div>
+        <button id="btnCloseGrowthModal" class="text-slate-400 hover:text-white p-1 rounded-lg">
+          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+          </svg>
+        </button>
+      </div>
+
+      <div class="p-6 space-y-4 max-h-[80vh] overflow-y-auto text-xs sm:text-sm">
+        <!-- Student Header Pill -->
+        <div class="bg-slate-50 border border-slate-200 rounded-xl p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+          <div>
+            <div class="text-xs text-slate-500">學生基本資訊</div>
+            <div class="flex items-center space-x-2 mt-0.5">
+              <span id="growthModalStudentName" class="text-lg font-bold text-slate-900">陳冠宇</span>
+              <span id="growthModalSeatNo" class="text-xs bg-slate-200 text-slate-800 px-2 py-0.5 rounded font-mono">01號</span>
+              <span id="growthModalSpecialBadge"></span>
+            </div>
+          </div>
+          <div class="flex items-center space-x-4 text-center">
+            <div class="bg-white p-2 rounded-lg border border-slate-200 min-w-[70px]">
+              <div class="text-[10px] text-slate-400">一段平均</div>
+              <div id="growthModalAvg1" class="text-base font-bold text-blue-700">0.0</div>
+            </div>
+            <div class="text-slate-400 font-bold">➔</div>
+            <div class="bg-white p-2 rounded-lg border border-slate-200 min-w-[70px]">
+              <div class="text-[10px] text-slate-400">二段平均</div>
+              <div id="growthModalAvg2" class="text-base font-bold text-emerald-700">0.0</div>
+            </div>
+            <div class="bg-amber-50 p-2 rounded-lg border border-amber-200 min-w-[70px]">
+              <div class="text-[10px] text-amber-800">成長幅度</div>
+              <div id="growthModalDiff" class="text-base font-bold text-amber-900">+0.0</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Radar Comparison Chart -->
+        <div class="bg-white border border-slate-200 rounded-xl p-4">
+          <div class="flex items-center justify-between mb-2">
+            <span class="text-xs font-bold text-slate-700">各學科能力五角雷達消長</span>
+            <span class="text-[11px] text-slate-400">藍線: 一段 / 綠線: 二段</span>
+          </div>
+          <div class="relative h-64 w-full">
+            <canvas id="studentRadarChart"></canvas>
+          </div>
+        </div>
+
+        <!-- Detailed Subject Score Diff Table -->
+        <div class="overflow-x-auto border border-slate-200 rounded-xl">
+          <table class="w-full text-left border-collapse text-xs">
+            <thead class="bg-slate-100 text-slate-700">
+              <tr>
+                <th class="py-2.5 px-3">學科</th>
+                <th class="py-2.5 px-3 text-center">第一次段考</th>
+                <th class="py-2.5 px-3 text-center">第二次段考</th>
+                <th class="py-2.5 px-3 text-center">分數差值</th>
+                <th class="py-2.5 px-3 text-center">進步率 (%)</th>
+                <th class="py-2.5 px-3">學習消長態勢</th>
+              </tr>
+            </thead>
+            <tbody id="growthModalSubjectTableBody" class="divide-y divide-slate-200">
+              <!-- Dynamically populated -->
+            </tbody>
+          </table>
+        </div>
+
+        <!-- Separate & Combined Notes Box -->
+        <div class="space-y-2 text-xs">
+          <div class="p-2.5 bg-blue-50/70 border border-blue-200 rounded-xl text-blue-950">
+            <strong class="text-blue-800">📘 第一次段考導師評語：</strong>
+            <span id="growthModalNotes1">—</span>
+          </div>
+          <div class="p-2.5 bg-emerald-50/70 border border-emerald-200 rounded-xl text-emerald-950">
+            <strong class="text-emerald-800">📗 第二次段考導師評語：</strong>
+            <span id="growthModalNotes2">—</span>
+          </div>
+          <div class="p-2.5 bg-purple-50/80 border border-purple-200 rounded-xl text-purple-950">
+            <strong class="text-purple-800">📊 兩次段考合併綜合分析與輔導建議：</strong>
+            <span id="growthModalNotes">持續保持良好作息與複習規劃。</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="px-6 py-3.5 bg-slate-50 border-t border-slate-200 flex items-center justify-between">
+        <button id="btnGrowthModalRegenAI" class="px-3.5 py-1.5 text-xs font-bold rounded-lg bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-500 hover:to-purple-500 text-white shadow-sm transition flex items-center space-x-1.5 active:scale-95">
+          <span>✨ 一鍵 AI 智慧更新此生三段評語與分析</span>
+        </button>
+        <button id="btnDismissGrowthModal" class="px-4 py-1.5 text-xs font-semibold rounded-lg bg-slate-800 hover:bg-slate-700 text-white transition">關閉診斷卡</button>
+      </div>
+    </div>
+  </div>
+
+
+  <!-- ========================================== -->
+  <!-- MODAL 3: 新增學生 (Student Modal) -->
+  <!-- ========================================== -->
+  <div id="studentEditModal" class="fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-50 flex items-center justify-center p-4 hidden no-print">
+    <div class="bg-white rounded-2xl shadow-2xl max-w-md w-full overflow-hidden border border-slate-200">
+      <div class="px-6 py-4 bg-brand-900 text-white flex items-center justify-between">
+        <h3 class="text-base font-bold">新增班級學生名冊</h3>
+        <button id="btnCloseStudentModal" class="text-slate-400 hover:text-white p-1 rounded-lg">
+          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+          </svg>
+        </button>
+      </div>
+
+      <div class="p-6 space-y-4 text-xs sm:text-sm">
+        <div class="grid grid-cols-2 gap-3">
+          <div>
+            <label class="block text-xs font-medium text-slate-700 mb-1">座號</label>
+            <input type="number" id="modalAddSeatNo" min="1" max="99" class="w-full text-xs rounded-lg border border-slate-300 p-2 focus:ring-2 focus:ring-brand-500" placeholder="例如: 1">
+          </div>
+          <div>
+            <label class="block text-xs font-medium text-slate-700 mb-1">學號 (選填)</label>
+            <input type="text" id="modalAddStudentId" class="w-full text-xs rounded-lg border border-slate-300 p-2 focus:ring-2 focus:ring-brand-500" placeholder="例如: 115001">
+          </div>
+        </div>
+
+        <div>
+          <label class="block text-xs font-medium text-slate-700 mb-1">學生姓名 *</label>
+          <input type="text" id="modalAddName" class="w-full text-xs rounded-lg border border-slate-300 p-2 focus:ring-2 focus:ring-brand-500" placeholder="請輸入中文姓名">
+        </div>
+
+        <div>
+          <label class="block text-xs font-medium text-slate-700 mb-1">特殊生身分初設</label>
+          <select id="modalAddSpecialType" class="w-full text-xs rounded-lg border border-slate-300 p-2 focus:ring-2 focus:ring-brand-500 bg-white">
+            <option value="general">一般生 (無特殊身分)</option>
+            <option value="resource">資源班學生</option>
+            <option value="iep">特教生 (IEP計畫)</option>
+            <option value="support">學習扶助對象</option>
+            <option value="disability">身心障礙學生</option>
+            <option value="gifted">資賦優異方案</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="px-6 py-4 bg-slate-50 border-t border-slate-200 flex items-center justify-end space-x-3">
+        <button id="btnCancelStudentModal" class="px-4 py-2 text-xs font-medium text-slate-600 hover:text-slate-800 transition">取消</button>
+        <button id="btnConfirmAddStudent" class="px-5 py-2 text-xs font-semibold rounded-lg bg-brand-600 hover:bg-brand-700 text-white shadow-sm transition">確認新增</button>
+      </div>
+    </div>
+  </div>
+
+
+  <!-- ========================================== -->
+  <!-- MODAL 4: 自訂確認對話方塊 (Custom Confirm Modal) -->
+  <!-- ========================================== -->
+  <div id="customConfirmModal" class="fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-50 flex items-center justify-center p-4 hidden no-print">
+    <div class="bg-white rounded-2xl shadow-2xl max-w-sm w-full overflow-hidden border border-slate-200 p-6">
+      <div class="w-12 h-12 rounded-full bg-amber-100 text-amber-600 flex items-center justify-center mx-auto mb-4">
+        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+        </svg>
+      </div>
+      <h3 id="confirmModalTitle" class="text-base font-bold text-center text-slate-900 mb-2">確認操作</h3>
+      <p id="confirmModalMessage" class="text-xs text-slate-600 text-center mb-6 leading-relaxed">您確定要執行這項操作嗎？</p>
+      <div class="flex items-center space-x-3">
+        <button id="btnConfirmCancel" class="w-1/2 py-2 px-3 text-xs font-semibold text-slate-700 bg-slate-100 hover:bg-slate-200 rounded-lg transition">取消</button>
+        <button id="btnConfirmOk" class="w-1/2 py-2 px-3 text-xs font-semibold text-white bg-rose-600 hover:bg-rose-700 rounded-lg shadow-sm transition">確認執行</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Toast Notification Container (No-Print) -->
+  <div id="toastContainer" class="fixed bottom-5 right-5 z-50 flex flex-col space-y-2 pointer-events-none no-print"></div>
+
+  <!-- Application Script -->
+  <script src="js/app.js"></script>
+</body>
+</html>
